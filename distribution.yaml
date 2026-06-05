@@ -1,0 +1,15 @@
+name: cfe-agent
+version: 0.1.0
+description: "Agente cotizador de recibos de luz CFE (México) a partir de PDF, para vendedores de Nisa Energy."
+author: "Hazu Low-Code Solutions / Nisa Energy"
+
+# Sin env_requires en esta versión demo (loopback).
+# Incremento futuro — descomentar cuando exista el endpoint real:
+# env_requires:
+#   - name: NISA_QUOTE_ENDPOINT
+#     description: "URL del endpoint de cotización de Nisa Energy"
+#     required: true
+
+distribution_owned:
+  - SOUL.md
+  - skills/cotizador-cfe/
