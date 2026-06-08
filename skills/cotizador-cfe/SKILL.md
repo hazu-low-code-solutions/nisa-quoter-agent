@@ -1,7 +1,7 @@
 ---
 name: cotizador-cfe
-description: "Extrae las variables anuales de un recibo CFE en PDF, recopila 3 respuestas del vendedor y devuelve el resumen de cotización en el chat."
-version: 0.1.0
+description: "Extrae las variables anuales de un recibo CFE en PDF y las envía al endpoint de Nisa Energy para registrar al cliente."
+version: 0.2.0
 metadata:
   hermes:
     category: energia
@@ -40,36 +40,31 @@ Esto produce un diccionario con 4 variables anuales:
 
 Si este paso devuelve `"error"`, repórtalo al vendedor y detente.
 
-### PASO 3 — Recopilación de datos del vendedor (3 preguntas)
+### PASO 3 — Envío al endpoint de Nisa Energy
 
-Haz las siguientes preguntas **una por una**, esperando la respuesta de cada una antes de pasar a la siguiente:
+Llama a `scripts/cotizador.py` usando la función `enviar_cotizacion(...)` con los siguientes argumentos:
 
-1. **[PREGUNTA_1]** *(pendiente — reemplaza este placeholder con la pregunta real)*
-2. **[PREGUNTA_2]** *(pendiente — reemplaza este placeholder con la pregunta real)*
-3. **[PREGUNTA_3]** *(pendiente — reemplaza este placeholder con la pregunta real)*
+| Parámetro | Origen |
+|---|---|
+| `nombre` | Nombre del remitente disponible en el contexto de la conversación (WhatsApp/Telegram). Si no está disponible, usa el número de teléfono como nombre. |
+| `telefono` | Número de teléfono del remitente disponible en el contexto de la conversación. |
+| `consumo_anual` | `Consumo anual` del Paso 2 |
+| `facturacion_anual` | `Facturación Anual` del Paso 2 |
+| `precio_promedio` | `Precio Promedio` del Paso 2 |
+| `kw_en_punta` | `KW en Punta` del Paso 2 |
 
-### PASO 4 — Resumen de cotización (loopback)
+**Si el resultado contiene `"error"`**, responde al vendedor:
+> "Tuve un problema al registrar los datos. Por favor intenta de nuevo en unos momentos o contacta a soporte."
 
-Una vez que tengas las 4 variables del PDF y las 3 respuestas del vendedor, presenta el siguiente resumen en el chat:
+**Si el resultado tiene `"status": "OK"`**, pasa al Paso 4.
 
-```
-📋 RESUMEN DE COTIZACIÓN — Nisa Energy
+### PASO 4 — Respuesta al vendedor
 
-📊 Datos extraídos del recibo CFE:
-• Consumo anual:     {Consumo anual} kWh
-• Facturación anual: ${Facturación Anual} MXN
-• Precio promedio:   ${Precio Promedio} MXN/kWh
-• KW en Punta:       {KW en Punta} kW
+Cuando el endpoint responde con `status: OK`, responde de forma natural y amigable. Ejemplo:
 
-💬 Datos del vendedor:
-• [PREGUNTA_1]: {respuesta_1}
-• [PREGUNTA_2]: {respuesta_2}
-• [PREGUNTA_3]: {respuesta_3}
-```
+> "¡Listo! Ya registré el recibo de tu cliente. En breve el sistema de Nisa Energy procesará la cotización y te la hará llegar. ¿Puedo ayudarte con algo más?"
 
-> **Nota (incremento futuro):** este paso de loopback será reemplazado por el envío
-> de estos datos al endpoint de cotización de Nisa Energy (`NISA_QUOTE_ENDPOINT`)
-> cuando se tenga la URL y el contrato del API.
+> **Nota:** La entrega de la cotización en PDF es un proceso que aún se está habilitando. Por ahora el sistema confirma el registro y notificará al vendedor cuando esté lista.
 
 ---
 
@@ -83,14 +78,27 @@ Una vez que tengas las 4 variables del PDF y las 3 respuestas del vendedor, pres
 
 ## Verificación rápida
 
-Para probar la extracción sin el agente:
+Para probar el flujo completo sin el agente:
 ```bash
 cd skills/cotizador-cfe/scripts
 python - <<EOF
 from extraccion_pdf import extraer_historico_cfe_real
 from variables_pdf import calcular_metricas_anuales
+from cotizador import enviar_cotizacion
+
 datos = extraer_historico_cfe_real("ruta/al/recibo.pdf")
-print(calcular_metricas_anuales(datos))
+metricas = calcular_metricas_anuales(datos)
+print(metricas)
+
+resultado = enviar_cotizacion(
+    nombre="Test Vendedor",
+    telefono="5512345678",
+    consumo_anual=metricas["Consumo anual"],
+    facturacion_anual=metricas["Facturación Anual"],
+    precio_promedio=metricas["Precio Promedio"],
+    kw_en_punta=metricas["KW en Punta"],
+)
+print(resultado)
 EOF
 ```
-Resultado esperado: dict con `Consumo anual`, `Facturación Anual`, `Precio Promedio` y `KW en Punta`.
+Resultado esperado: `{"status": "OK", "message": "Datos recibidos", "cliente_id": "...", "contacto_id": "..."}`
