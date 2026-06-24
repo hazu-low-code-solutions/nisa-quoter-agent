@@ -58,13 +58,19 @@ Llama a `scripts/cotizador.py` usando la función `enviar_cotizacion(...)` con l
 
 **Si el resultado tiene `"status": "OK"`**, pasa al Paso 4.
 
-### PASO 4 — Respuesta al vendedor
+### PASO 4 — Descarga y envío del PDF de cotización
 
-Cuando el endpoint responde con `status: OK`, responde de forma natural y amigable. Ejemplo:
+La respuesta del endpoint ahora incluye `pdf_url` con la cotización lista. Debes descargarla y enviarla como archivo en el chat.
 
-> "¡Listo! Ya registré el recibo de tu cliente. En breve el sistema de Nisa Energy procesará la cotización y te la hará llegar. ¿Puedo ayudarte con algo más?"
+1. Extrae `pdf_url` del resultado del Paso 3.
+2. Llama a `scripts/cotizador.py` usando la función `descargar_pdf(pdf_url)`.
+   - Si el resultado contiene `"error"`, informa al vendedor que no se pudo obtener el PDF y comparte la URL directamente:
+     > "Registré tu cliente correctamente, pero no pude adjuntar el PDF. Puedes descargarlo aquí: {pdf_url}"
+   - Si el resultado contiene `"ruta"`, el archivo ya está disponible en la ruta local retornada.
+3. **Adjunta el archivo** de la ruta local como documento en la respuesta del chat (el gateway de Hermes lo enviará como archivo de Telegram).
+4. Acompaña el archivo con un mensaje amigable:
 
-> **Nota:** La entrega de la cotización en PDF es un proceso que aún se está habilitando. Por ahora el sistema confirma el registro y notificará al vendedor cuando esté lista.
+> "¡Listo! Aquí tienes la cotización de tu cliente generada por Nisa Energy. ¿Puedo ayudarte con algo más?"
 
 ---
 
@@ -101,4 +107,4 @@ resultado = enviar_cotizacion(
 print(resultado)
 EOF
 ```
-Resultado esperado: `{"status": "OK", "message": "Datos recibidos", "cliente_id": "...", "contacto_id": "..."}`
+Resultado esperado: `{"status": "OK", "message": "Datos recibidos", "solicitud_id": "...", "pdf_url": "https://base44.app/..."}`
